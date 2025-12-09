@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Christmas Tree Maker - 3D Interactive Holiday Game</title>
+    <meta name="description" content="Design your perfect 3D Christmas tree in this interactive arcade game. Add lights, ornaments, snow, and gifts. Create and share your holiday masterpiece online.">
+    <meta name="keywords" content="Christmas Tree Maker, 3D tree decorator, holiday game, interactive Christmas tree, virtual tree decoration, online Christmas tree, webgl game">
+    <meta name="author" content="Chris Pirillo">
+    <link rel="canonical" href="https://pirillo.com/arcade/christmas-tree-maker.html">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pirillo.com/arcade/christmas-tree-maker.html">
+    <meta property="og:title" content="Christmas Tree Maker">
+    <meta property="og:description" content="Design your perfect 3D Christmas tree. Add lights, ornaments, and gifts in this festive interactive web app.">
+    <meta property="og:image" content="https://pirillo.com/arcade/images/christmas-tree-maker.png">
+    <meta property="og:site_name" content="Chris Pirillo's Arcade">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://pirillo.com/arcade/christmas-tree-maker.html">
+    <meta property="twitter:title" content="Christmas Tree Maker">
+    <meta property="twitter:description" content="Design your perfect 3D Christmas tree. Add lights, ornaments, and gifts in this festive interactive web app.">
+    <meta property="twitter:image" content="https://pirillo.com/arcade/images/christmas-tree-maker.png">
+    <meta property="twitter:creator" content="@ChrisPirillo">
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Christmas Tree Maker",
+      "url": "https://pirillo.com/arcade/christmas-tree-maker.html",
+      "image": "https://pirillo.com/arcade/images/christmas-tree-maker.png",
+      "description": "An interactive 3D web application allowing users to decorate a procedural Christmas tree with lights, ornaments, and gifts.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Any",
+      "author": {
+        "@type": "Person",
+        "name": "Chris Pirillo",
+        "url": "https://pirillo.com"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+
+    <!-- Google Analytics GA4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1CQ4D3VQ3L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-1CQ4D3VQ3L');
+    </script>
+
+    <!-- Resource Hints for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+    <!-- Fonts (Optimized Loading) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (Kept in Head to prevent FOUC) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Base Settings */
+        body { 
+            margin: 0; overflow: hidden; background-color: #0f172a; 
+            font-family: 'Inter', sans-serif; touch-action: none; 
+            user-select: none; -webkit-user-select: none; 
+        }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 0; touch-action: none; }
+        
+        /* Glassmorphism Panel */
+        #ui-container {
+            position: absolute; top: 20px; right: 20px; width: 360px; max-width: 90vw;
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px; 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            color: #e2e8f0; 
+            z-index: 10; display: flex; flex-direction: column; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 85vh;
+            overflow: hidden;
+        }
+
+        /* Improved Collapsed State - Even Padding */
+        #ui-container.collapsed { 
+            max-height: 72px; 
+        }
+        
+        /* Header */
+        #ui-header { 
+            padding: 0 24px; /* Horizontal padding only, flex handles vertical */
+            height: 72px; /* Fixed height for consistency */
+            flex-shrink: 0; /* CRITICAL FIX: Prevent header from shrinking when collapsed */
+            display: flex; justify-content: space-between; align-items: center; 
+            cursor: pointer; 
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
+            box-sizing: border-box;
+            transition: border-bottom-color 0.3s ease;
+        }
+        #ui-header:hover { background: rgba(255,255,255,0.05); }
+        
+        /* Hide the border line when collapsed for a cleaner look */
+        #ui-container.collapsed #ui-header {
+            border-bottom-color: transparent;
+        }
+
+        #toggle-icon { transition: transform 0.3s ease; opacity: 0.7; }
+        #ui-container.collapsed #toggle-icon { transform: rotate(-180deg); }
+
+        /* Tab Navigation */
+        .nav-segment {
+            display: flex; background: rgba(0,0,0,0.3); 
+            padding: 4px; margin: 16px 16px 0 16px;
+            border-radius: 12px;
+        }
+        .nav-btn {
+            flex: 1; text-align: center; padding: 8px; font-size: 0.8rem; font-weight: 600;
+            border-radius: 8px; cursor: pointer; color: #94a3b8;
+            transition: all 0.2s ease;
+        }
+        .nav-btn:hover { color: white; }
+        .nav-btn.active {
+            background: rgba(255,255,255,0.1);
+            color: #fbbf24; /* Amber-400 */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* Content Area */
+        #ui-body { display: flex; flex-direction: column; overflow: hidden; flex: 1; }
+        .content-scroll { 
+            padding: 16px; overflow-y: auto; flex: 1; 
+            scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;
+        }
+        .content-scroll::-webkit-scrollbar { width: 4px; }
+        .content-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+        .panel-view { display: none; animation: slideIn 0.2s ease-out; }
+        .panel-view.active { display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Section Styling */
+        .section-title {
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+            color: #64748b; font-weight: 700; margin-bottom: 12px; display: block;
+        }
+        .tool-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 24px;
+        }
+        .tool-btn {
+            aspect-ratio: 1;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px; cursor: pointer;
+            transition: all 0.2s; color: #cbd5e1;
+        }
+        .tool-btn:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+        .tool-btn.active {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: #fbbf24;
+            color: #fbbf24;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.1);
+        }
+        .tool-icon { font-size: 1.5rem; margin-bottom: 4px; }
+        .tool-name { font-size: 0.65rem; font-weight: 500; }
+
+        .action-btn {
+            width: 100%; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 0.9rem;
+            cursor: pointer; border: none; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-primary { background: #d97706; color: white; }
+        .btn-primary:hover { background: #b45309; }
+        .btn-secondary { background: rgba(255,255,255,0.05); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+        .btn-danger { background: rgba(220, 38, 38, 0.2); color: #fca5a5; border: 1px solid rgba(220, 38, 38, 0.3); }
+        .btn-danger:hover { background: rgba(220, 38, 38, 0.3); }
+        .btn-danger.active { background: #dc2626; color: white; border-color: #dc2626; }
+
+        /* --- STYLE STUDIO STYLES --- */
+        .style-studio {
+            background: rgba(0,0,0,0.25); border-radius: 16px; padding: 16px; margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .mode-selector {
+            display: flex; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 10px; margin-bottom: 16px;
+        }
+        .mode-option {
+            flex: 1; text-align: center; padding: 8px; font-size: 0.75rem; border-radius: 8px; cursor: pointer;
+            color: #94a3b8; font-weight: 600; transition: all 0.2s;
+        }
+        .mode-option.active {
+            background: rgba(255,255,255,0.15); color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .palette-container {
+            display: flex; gap: 12px; justify-content: center; align-items: center; height: 50px; margin-bottom: 16px;
+        }
+        
+        /* New Robust Color Input Styling */
+        .color-circle {
+            width: 42px; height: 42px; 
+            border-radius: 50%; 
+            position: relative;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.1); 
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            background-color: #ef4444; /* Default fallback */
+            overflow: hidden; /* Ensure click containment */
+        }
+        .color-circle:hover { transform: scale(1.1); box-shadow: 0 0 0 3px rgba(255,255,255,0.3); }
+        
+        /* The invisible touch target */
+        .color-circle input[type="color"] {
+            opacity: 0;
+            width: 200%; height: 200%; /* Oversized to ensure full coverage */
+            position: absolute; 
+            top: -50%; left: -50%; /* Center the oversize */
+            padding: 0; border: none;
+            cursor: pointer;
+        }
+        
+        /* Rainbow visual */
+        .rainbow-bar {
+            width: 100%; height: 42px; border-radius: 21px;
+            background: linear-gradient(90deg, #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee);
+            opacity: 0.8; box-shadow: 0 0 10px rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 0.8rem; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            cursor: default;
+        }
+
+        .update-btn {
+            width: 100%; padding: 12px; font-size: 0.85rem; font-weight: 600;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
+            border: none; color: white; border-radius: 10px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            transition: transform 0.1s;
+        }
+        .update-btn:active { transform: translateY(1px); }
+
+        /* Sliders */
+        .slider-group { margin-bottom: 20px; }
+        .slider-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem; color: #cbd5e1; }
+        input[type="range"] { 
+            width: 100%; height: 6px; -webkit-appearance: none; background: rgba(255,255,255,0.1); 
+            border-radius: 3px; outline: none; 
+        }
+        input[type="range"]::-webkit-slider-thumb { 
+            -webkit-appearance: none; width: 16px; height: 16px; background: #fbbf24; 
+            border-radius: 50%; cursor: pointer; transition: transform 0.1s; 
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        /* Toggles */
+        .toggle-card {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px; background: rgba(255,255,255,0.03); border-radius: 10px;
+            margin-bottom: 8px; cursor: pointer;
+        }
+        .toggle-card:hover { background: rgba(255,255,255,0.06); }
+        .toggle-text { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+        input[type="checkbox"] { width: 18px; height: 18px; accent-color: #fbbf24; }
+
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <!-- Semantic Tag Update: Aside for UI Panel -->
+    <aside id="ui-container" aria-label="Tree Decorator Controls">
+        <!-- Header: Semantic Header Tag -->
+        <header id="ui-header" onclick="toggleUI()" role="button" aria-expanded="true" aria-controls="ui-body">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-lg shadow-lg" role="img" aria-label="Christmas Tree Icon">🎄</div>
+                <div>
+                    <h1 class="text-sm font-bold text-white leading-tight">Christmas Tree Maker</h1>
+                </div>
+            </div>
+            <div id="toggle-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Collapse Menu"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </div>
+        </header>
+        
+        <section id="ui-body">
+            <!-- Navigation: Semantic Nav Tag -->
+            <nav class="nav-segment" aria-label="Tool Tabs">
+                <div class="nav-btn active" onclick="switchTab('decor')" role="button" tabindex="0">Design</div>
+                <div class="nav-btn" onclick="switchTab('tree')" role="button" tabindex="0">Tree</div>
+                <div class="nav-btn" onclick="switchTab('actions')" role="button" tabindex="0">Actions</div>
+            </nav>
+
+            <!-- Tab Content -->
+            <div class="content-scroll">
+                
+                <!-- TAB 1: DESIGN -->
+                <div id="panel-decor" class="panel-view active">
+                    
+                    <span class="section-title">Select Tool</span>
+                    <div class="tool-grid" role="group" aria-label="Decoration Tools">
+                        <div class="tool-btn active" id="btn-mode-bulb" onclick="setMode('bulb')" role="button" aria-label="Bulb Tool"><span class="tool-icon">🔮</span><span class="tool-name">Bulb</span></div>
+                        <div class="tool-btn" id="btn-mode-candy" onclick="setMode('candy')" role="button" aria-label="Candy Cane Tool"><span class="tool-icon">🍬</span><span class="tool-name">Cane</span></div>
+                        <div class="tool-btn" id="btn-mode-bow" onclick="setMode('bow')" role="button" aria-label="Bow Tool"><span class="tool-icon">🎀</span><span class="tool-name">Bow</span></div>
+                        <div class="tool-btn" id="btn-mode-gift" onclick="setMode('gift')" role="button" aria-label="Gift Tool"><span class="tool-icon">🎁</span><span class="tool-name">Gift</span></div>
+                        <div class="tool-btn" id="btn-mode-light" onclick="setMode('light')" role="button" aria-label="Light Tool"><span class="tool-icon">✨</span><span class="tool-name">Light</span></div>
+                        <div class="tool-btn" id="btn-mode-string" onclick="setMode('string')" role="button" aria-label="String Light Tool"><span class="tool-icon">〰️</span><span class="tool-name">String</span></div>
+                        <div class="tool-btn" id="btn-mode-garland" onclick="setMode('garland')" role="button" aria-label="Garland Tool"><span class="tool-icon">🧣</span><span class="tool-name">Garland</span></div>
+                        <div class="tool-btn" id="btn-mode-tinsel" onclick="setMode('tinsel')" role="button" aria-label="Tinsel Tool"><span class="tool-icon">🎋</span><span class="tool-name">Tinsel</span></div>
+                    </div>
+
+                    <span class="section-title">Style Studio</span>
+                    <div class="style-studio">
+                        <!-- Color Mode Selector -->
+                        <div class="mode-selector" role="group" aria-label="Color Modes">
+                            <div class="mode-option active" id="mode-mono" onclick="setColorMode('mono')" role="button">Mono</div>
+                            <div class="mode-option" id="mode-palette" onclick="setColorMode('palette')" role="button">Palette (3)</div>
+                            <div class="mode-option" id="mode-random" onclick="setColorMode('random')" role="button">Rainbow</div>
+                        </div>
+
+                        <!-- Dynamic Inputs -->
+                        <div class="palette-container" id="palette-inputs">
+                            <!-- JS injects here -->
+                        </div>
+
+                        <button class="update-btn" onclick="applyStyleToAll()">
+                            🎨 Apply Style to All
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2">
+                         <button class="action-btn btn-primary w-full" onclick="addStar()">
+                            <span>🌟 Place Topper</span>
+                        </button>
+                        <button id="btn-mode-remove" class="action-btn btn-danger w-full" onclick="setMode('remove')">
+                            <span>🗑️ Remove</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 2: TREE -->
+                <div id="panel-tree" class="panel-view">
+                    <span class="section-title">Dimensions</span>
+                    <div class="slider-group">
+                        <div class="slider-header"><span>Height</span><span id="val-height">25</span></div>
+                        <input type="range" id="input-height" min="15" max="35" value="25" oninput="updateTreeProp('treeHeight', this.value)" aria-label="Tree Height">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><span>Density</span><span id="val-levels">16</span></div>
+                        <input type="range" id="input-levels" min="8" max="24" value="16" oninput="updateTreeProp('levels', this.value)" aria-label="Tree Density">
+                    </div>
+                    
+                    <span class="section-title">Foliage</span>
+                    <div class="slider-group">
+                        <div class="slider-header"><span>Branch Width</span><span id="val-radius">1.0</span></div>
+                        <input type="range" id="input-radius" min="0.5" max="1.5" step="0.1" value="1.0" oninput="updateTreeProp('branchRadiusMult', this.value)" aria-label="Branch Width">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header"><span>Needle Fluff</span><span id="val-needle">1.0</span></div>
+                        <input type="range" id="input-needle" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateTreeProp('needleLenMult', this.value)" aria-label="Needle Fluff">
+                    </div>
+
+                    <span class="section-title">Environment</span>
+                    <label class="toggle-card">
+                        <div class="toggle-text">❄️ Snowfall</div>
+                        <input type="checkbox" id="check-snow" onchange="toggleSnow()" checked aria-label="Toggle Snowfall">
+                    </label>
+                    <label class="toggle-card">
+                        <div class="toggle-text">✨ Light Twinkle</div>
+                        <input type="checkbox" id="check-twinkle" onchange="toggleTwinkle()" checked aria-label="Toggle Light Twinkle">
+                    </label>
+                </div>
+
+                <!-- TAB 3: ACTIONS -->
+                <div id="panel-actions" class="panel-view">
+                    <span class="section-title">Auto-Decorator</span>
+                    <div class="flex flex-col gap-3 mb-6">
+                        <button class="action-btn btn-secondary" onclick="autoDecorate('lights')">
+                            💡 Generate Lights Only
+                        </button>
+                        <button class="action-btn btn-secondary" onclick="autoDecorate('all')">
+                            ✨ Generate Full Decor
+                        </button>
+                    </div>
+
+                    <span class="section-title">Scene Management</span>
+                    <div class="flex flex-col gap-3">
+                        <button class="action-btn btn-secondary" onclick="takeScreenshot()">
+                            📸 Export Snapshot
+                        </button>
+                        <button class="action-btn btn-danger" onclick="clearDecorations()">
+                            ♻️ Clear All Decorations
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </aside>
+
+    <!-- Performance Optimization: Scripts moved to bottom to unblock rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // --- 3D ENGINE & LOGIC START ---
+        let scene, camera, renderer, raycaster, mouse, controls;
+        let treeContainer, branches = [], decorationsGroup, snowSystem, floorMesh, cursorMesh, standGroup;
+        let glowTexture, candyTexture;
+        
+        const state = {
+            mode: 'bulb',
+            colorMode: 'mono', // mono, palette, random
+            colors: ['#ef4444', '#f59e0b', '#3b82f6'], // Default palette
+            snowing: true,
+            twinkle: true,
+            treeHeight: 25,
+            levels: 16,
+            branchRadiusMult: 1.0,
+            needleLenMult: 1.0
+        };
+        
+        function createCandyTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            // White background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0,0,128,128);
+            
+            // Red stripes with gradient for faux-3D
+            const grad = ctx.createLinearGradient(0,0,128,128);
+            grad.addColorStop(0, '#cc0000');
+            grad.addColorStop(0.5, '#ff0000');
+            grad.addColorStop(1, '#990000');
+            ctx.fillStyle = grad;
+            
+            // Draw diagonal stripes
+            ctx.beginPath();
+            const stripeWidth = 24;
+            for(let i=-128; i<256; i+=stripeWidth*2) {
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i+stripeWidth, 0);
+                ctx.lineTo(i+128+stripeWidth, 128);
+                ctx.lineTo(i+128, 128);
+            }
+            ctx.fill();
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, 4);
+            return tex;
+        }
+
+        let materials;
+        
+        function initMaterials() {
+             materials = {
+                wood: new THREE.MeshStandardMaterial({ color: 0x3d2817, roughness: 1.0 }),
+                needle: new THREE.MeshStandardMaterial({ color: 0x1e4a26, roughness: 0.8, metalness: 0.1, side: THREE.DoubleSide }),
+                bulb: (color) => new THREE.MeshPhysicalMaterial({ color: color, metalness: 0.8, roughness: 0.15, clearcoat: 1.0, reflectivity: 1.0 }),
+                light: (color) => new THREE.MeshBasicMaterial({ color: color }),
+                stringLight: (color) => new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 2.0, roughness: 0.2 }),
+                candy: new THREE.MeshPhysicalMaterial({ 
+                    map: candyTexture, 
+                    roughness: 0.1, 
+                    metalness: 0.0, 
+                    clearcoat: 0.8,
+                    clearcoatRoughness: 0.1
+                }),
+                bow: (color) => new THREE.MeshStandardMaterial({ color: color, roughness: 1.0, metalness: 0.05, side: THREE.DoubleSide }),
+                giftBox: (color) => new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 }),
+                giftRibbon: new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.5, roughness: 0.2 }),
+                star: new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.6, metalness: 0.9, roughness: 0.2 }),
+                garland: (color) => new THREE.MeshStandardMaterial({ color: color, metalness: 0.9, roughness: 0.4, emissive: color, emissiveIntensity: 0.2 }),
+                // Updated Dynamic Tinsel Material Function
+                tinsel: (color) => new THREE.MeshStandardMaterial({ 
+                    color: color, 
+                    metalness: 0.8, 
+                    roughness: 0.3,
+                    emissive: color,
+                    emissiveIntensity: 0.2,
+                    side: THREE.DoubleSide,
+                    flatShading: false 
+                }),
+                wire: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }),
+                stand: new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6, roughness: 0.8 }),
+                hitBox: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }) 
+            };
+        }
+
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            g.addColorStop(0, 'rgba(255,255,255,1)');
+            g.addColorStop(0.3, 'rgba(255,255,255,0.4)');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(0,0,64,64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function randomizeTreeSettings() {
+            // Randomize Height between 18 and 30
+            state.treeHeight = Math.floor(18 + Math.random() * 12);
+            document.getElementById('input-height').value = state.treeHeight;
+            document.getElementById('val-height').innerText = state.treeHeight;
+
+            // Randomize Density between 12 and 22
+            state.levels = Math.floor(12 + Math.random() * 10);
+            document.getElementById('input-levels').value = state.levels;
+            document.getElementById('val-levels').innerText = state.levels;
+
+            // Randomize Fluff between 0.8 and 1.3
+            state.needleLenMult = (0.8 + Math.random() * 0.5).toFixed(1);
+            document.getElementById('input-needle').value = state.needleLenMult;
+            document.getElementById('val-needle').innerText = state.needleLenMult;
+
+            // Randomize Branch Thickness slightly
+            state.branchRadiusMult = (0.8 + Math.random() * 0.4).toFixed(1);
+            document.getElementById('input-radius').value = state.branchRadiusMult;
+            document.getElementById('val-radius').innerText = state.branchRadiusMult;
+        }
+
+        function init() {
+            glowTexture = createGlowTexture();
+            candyTexture = createCandyTexture();
+            initMaterials();
+            
+            // Randomize tree on load
+            randomizeTreeSettings();
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050810);
+            scene.fog = new THREE.FogExp2(0x050810, 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 35);
+            camera.lookAt(0, 10, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 10, 0);
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+            const amb = new THREE.AmbientLight(0xffffff, 0.2);
+            scene.add(amb);
+            const moon = new THREE.DirectionalLight(0xcceeff, 0.4);
+            moon.position.set(-20, 50, -20);
+            scene.add(moon);
+            const keyLight = new THREE.PointLight(0xfff5e0, 1.0, 100);
+            keyLight.position.set(20, 20, 30);
+            keyLight.castShadow = true;
+            keyLight.shadow.bias = -0.0001;
+            keyLight.shadow.mapSize.width = 2048;
+            keyLight.shadow.mapSize.height = 2048;
+            scene.add(keyLight);
+
+            const plane = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ color: 0xddddff, roughness: 0.9 }));
+            plane.rotation.x = -Math.PI / 2;
+            plane.receiveShadow = true;
+            floorMesh = plane;
+            floorMesh.userData = { type: 'floor' };
+            scene.add(plane);
+
+            const cursorGeo = new THREE.RingGeometry(0.3, 0.35, 32);
+            cursorMesh = new THREE.Mesh(cursorGeo, new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+            cursorMesh.rotation.x = -Math.PI/2;
+            cursorMesh.visible = false;
+            scene.add(cursorMesh);
+
+            treeContainer = new THREE.Group();
+            decorationsGroup = new THREE.Group();
+            scene.add(treeContainer);
+            scene.add(decorationsGroup);
+
+            createStand();
+            generateTree();
+            createSnow();
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            window.addEventListener('resize', onWindowResize, false);
+            const canvas = renderer.domElement;
+            canvas.addEventListener('pointerdown', onPointerDown, false);
+            canvas.addEventListener('pointerup', onPointerUp, false);
+            canvas.addEventListener('pointermove', onPointerMove, false);
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+            animate();
+        }
+
+        function createStand() {
+            if(standGroup) scene.remove(standGroup);
+            standGroup = new THREE.Group();
+            const standGeo = new THREE.CylinderGeometry(1.2, 4.0, 2.5, 32, 1);
+            const stand = new THREE.Mesh(standGeo, materials.stand);
+            stand.position.y = 1.25;
+            stand.castShadow = true;
+            stand.receiveShadow = true;
+            standGroup.add(stand);
+            standGroup.position.y = 0;
+            scene.add(standGroup);
+        }
+
+        function generateTree() {
+            while(treeContainer.children.length > 0){ 
+                let c = treeContainer.children[0];
+                if(c.geometry) c.geometry.dispose();
+                treeContainer.remove(c); 
+            }
+            branches = [];
+            clearDecorations(); 
+
+            const trunkH = parseFloat(state.treeHeight);
+            const trunkR = 0.8 * parseFloat(state.branchRadiusMult);
+
+            const trunkGeo = new THREE.CylinderGeometry(trunkR * 0.25, trunkR, trunkH, 16, 12, true);
+            const pos = trunkGeo.attributes.position;
+            const vec = new THREE.Vector3();
+            for(let i=0; i<pos.count; i++){
+                vec.fromBufferAttribute(pos, i);
+                const noise = Math.sin(vec.y * 1.5) * 0.05 + Math.cos(vec.y * 0.5 + vec.x * 2)*0.03;
+                vec.x += noise;
+                vec.z += noise;
+                pos.setXYZ(i, vec.x, vec.y, vec.z);
+            }
+            trunkGeo.computeVertexNormals();
+            
+            const trunk = new THREE.Mesh(trunkGeo, materials.wood);
+            trunk.position.y = trunkH / 2 + 1.5; 
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            trunk.userData = { type: 'trunk' };
+            treeContainer.add(trunk);
+
+            const layers = parseInt(state.levels);
+            const radiusMult = parseFloat(state.branchRadiusMult);
+            const needleMult = parseFloat(state.needleLenMult);
+
+            for(let i=0; i<layers; i++) {
+                const t = i / (layers - 1);
+                const y = 3.5 + t * (trunkH - 4.5);
+                const taper = Math.pow(1 - t, 1.2); 
+                const radius = (9 * taper) + 0.5;
+                const count = Math.floor(12 * (1 - t*0.5)) + 4;
+                
+                for(let j=0; j<count; j++) {
+                    const angle = (j / count) * Math.PI * 2 + (Math.random() * 0.6);
+                    const length = radius * (0.7 + Math.random() * 0.4);
+                    createBranch(y, angle, length, i, radiusMult, needleMult);
+                }
+            }
+
+            const topY = trunkH + 1.8; 
+            createBranchLogic(topY, 0, 1.5, layers, radiusMult, needleMult, true);
+            for(let i=0; i<6; i++) {
+                const angle = (i/6) * Math.PI*2;
+                const b = createBranchLogic(topY - 0.3, angle, 0.8, layers, radiusMult, needleMult);
+                b.rotation.z = Math.PI * 0.3; 
+            }
+        }
+
+        function createBranchLogic(y, angle, length, layerIndex, rMult, nMult, isLeader=false) {
+            const branchGroup = new THREE.Group();
+            branchGroup.position.set(0, y, 0);
+            
+            if(isLeader) {
+                branchGroup.rotation.z = Math.PI / 2;
+            } else {
+                branchGroup.rotation.y = angle;
+                const initialDip = 0.2 + (layerIndex * 0.02) + (Math.random() * 0.1);
+                branchGroup.rotation.z = initialDip; 
+            }
+
+            const boneRadius = 0.08 * rMult;
+            const boneGeo = new THREE.CylinderGeometry(boneRadius*0.5, boneRadius, length, 5);
+            boneGeo.translate(0, length/2, 0);
+            boneGeo.rotateZ(-Math.PI/2);
+            const bone = new THREE.Mesh(boneGeo, materials.wood);
+            bone.castShadow = true;
+            bone.receiveShadow = true;
+            bone.userData = { type: 'branch_bone', length: length, parentGroup: branchGroup, radius: boneRadius };
+            branchGroup.add(bone);
+
+            const needleCount = Math.floor(length * 40 * rMult);
+            const needleGeo = new THREE.ConeGeometry(0.06 * nMult, 0.8 * nMult, 3);
+            const instancedNeedles = new THREE.InstancedMesh(needleGeo, materials.needle, needleCount);
+            instancedNeedles.castShadow = true;
+            instancedNeedles.receiveShadow = true;
+
+            const dummy = new THREE.Object3D();
+            for(let i=0; i<needleCount; i++) {
+                const dist = Math.random() * length;
+                const rot = Math.random() * Math.PI * 2;
+                const lean = (Math.random() - 0.5) * 0.5;
+                dummy.position.set(dist, 0, 0);
+                dummy.rotation.set(0, 0, 0);
+                dummy.rotateX(rot);
+                dummy.translateY(boneRadius); 
+                dummy.rotateZ(Math.PI/4 + lean);
+                dummy.updateMatrix();
+                instancedNeedles.setMatrixAt(i, dummy.matrix);
+            }
+            instancedNeedles.instanceMatrix.needsUpdate = true;
+            instancedNeedles.userData = { type: 'needles', parentGroup: branchGroup };
+            branchGroup.add(instancedNeedles);
+            
+            const hitGeo = new THREE.CylinderGeometry(0.8 * nMult, 0.8 * nMult, length, 8);
+            hitGeo.translate(0, length/2, 0);
+            hitGeo.rotateZ(-Math.PI/2);
+            const hitMesh = new THREE.Mesh(hitGeo, materials.hitBox);
+            hitMesh.userData = { type: 'hit_box', parentGroup: branchGroup };
+            branchGroup.add(hitMesh);
+
+            branchGroup.userData = { type: 'branch_system', initialRotationZ: isLeader?Math.PI/2:0.2, currentLoad: 0 };
+            treeContainer.add(branchGroup);
+            branches.push(branchGroup);
+            return branchGroup;
+        }
+
+        function createBranch(y, angle, length, layerIndex, rMult, nMult) {
+            createBranchLogic(y, angle, length, layerIndex, rMult, nMult);
+        }
+
+        let mouseDownPos = { x: 0, y: 0 };
+        function onPointerDown(e) {
+            if(e.target.closest('#ui-container')) return;
+            mouseDownPos = { x: e.clientX, y: e.clientY };
+        }
+        function onPointerUp(e) {
+            if(e.target.closest('#ui-container')) return;
+            const dist = Math.hypot(e.clientX - mouseDownPos.x, e.clientY - mouseDownPos.y);
+            if(dist > 10) return;
+            if(e.isPrimary) {
+                handleInteraction(e.clientX, e.clientY);
+            }
+        }
+        function onPointerMove(e) {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            if(state.mode === 'garland' || state.mode === 'string' || state.mode === 'tinsel' || state.mode === 'remove') {
+                cursorMesh.visible = false;
+                return;
+            }
+            const targets = [floorMesh, ...treeContainer.children];
+            const intersects = raycaster.intersectObjects(targets, true);
+            if(intersects.length > 0) {
+                const hit = intersects[0];
+                const obj = hit.object;
+                if(state.mode === 'gift' && obj.userData.type === 'floor') {
+                    cursorMesh.position.copy(hit.point);
+                    cursorMesh.position.y += 0.1;
+                    cursorMesh.lookAt(hit.point.x, hit.point.y + 1, hit.point.z);
+                    cursorMesh.visible = true;
+                    const col = checkCollision(hit.point, 1.0, true);
+                    cursorMesh.material.color.setHex(col ? 0xff0000 : 0x00ff00);
+                } else if(obj.userData.type === 'hit_box' || obj.userData.type === 'needles' || obj.userData.type === 'branch_bone') {
+                    let branchGroup = obj.userData.parentGroup;
+                    if(branchGroup) {
+                        const bone = branchGroup.children.find(c => c.userData.type === 'branch_bone');
+                        const length = bone.userData.length;
+                        let local = branchGroup.worldToLocal(hit.point.clone());
+                        let xPos = local.x;
+                        if(state.mode === 'bow') xPos = length; // Snap to Tip
+                        else if(state.mode !== 'light') xPos = Math.max(length * 0.4, Math.min(length - 0.1, xPos));
+                        const needleLen = parseFloat(state.needleLenMult) * 0.8;
+                        
+                        // Cursor Visual Alignment Logic
+                        if(state.mode === 'bow') {
+                            local.y = 0; // Visual preview at center for bow
+                        } else {
+                            local.y = bone.userData.radius + needleLen;
+                        }
+
+                        local.x = xPos; local.z = 0;
+                        const worldPos = branchGroup.localToWorld(local);
+                        if(worldPos.y < 2.5 || worldPos.y > parseFloat(state.treeHeight)) {
+                            cursorMesh.visible = false;
+                            return;
+                        }
+                        cursorMesh.position.copy(worldPos);
+                        cursorMesh.lookAt(worldPos.clone().add(new THREE.Vector3(0,1,0)));
+                        cursorMesh.visible = true;
+                        const col = checkCollision(worldPos, 0.3, false);
+                        cursorMesh.material.color.setHex(col && state.mode !== 'light' ? 0xff0000 : 0x00ff00);
+                    }
+                } else {
+                    cursorMesh.visible = false;
+                }
+            } else {
+                cursorMesh.visible = false;
+            }
+        }
+
+        function handleInteraction(x, y) {
+            mouse.x = (x / window.innerWidth) * 2 - 1;
+            mouse.y = -(y / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            if(state.mode === 'remove') {
+                const intersects = raycaster.intersectObjects([...decorationsGroup.children], true);
+                if(intersects.length > 0) {
+                    let target = intersects[0].object;
+                    while(target.parent && target.parent !== decorationsGroup && target.parent.userData.type !== 'branch_system') { target = target.parent; }
+                    
+                    // Handle rigid (child of branch) or scene level
+                    if(target.userData.attachedBranch) {
+                         modifyBranchLoad(target.userData.attachedBranch, -1);
+                         if(target.parent === target.userData.attachedBranch) {
+                             target.parent.remove(target);
+                         } else {
+                             decorationsGroup.remove(target);
+                         }
+                    }
+                }
+                // Also check children of branches (rigid bows)
+                const branchIntersects = raycaster.intersectObjects(branches, true);
+                if(branchIntersects.length > 0) {
+                     let t2 = branchIntersects[0].object;
+                     while(t2.parent && t2.userData.type !== 'bow') { t2 = t2.parent; }
+                     if(t2.userData.type === 'bow') {
+                         if(t2.parent.userData.type === 'branch_system') {
+                             modifyBranchLoad(t2.parent, -1);
+                             t2.parent.remove(t2);
+                         }
+                     }
+                }
+                return;
+            }
+            if(state.mode === 'garland' || state.mode === 'string' || state.mode === 'tinsel') {
+                createSpiralDraping(state.mode);
+                return;
+            }
+            const targets = [floorMesh, ...treeContainer.children];
+            const intersects = raycaster.intersectObjects(targets, true);
+            if(intersects.length > 0) {
+                const hit = intersects[0];
+                const obj = hit.object;
+                if(state.mode === 'gift' && obj.userData.type === 'floor') {
+                    placeGift(hit.point);
+                    return;
+                }
+                let branchGroup = null;
+                if(obj.userData.type === 'hit_box' || obj.userData.type === 'needles' || obj.userData.type === 'branch_bone') {
+                    branchGroup = obj.userData.parentGroup;
+                }
+                if(branchGroup && state.mode !== 'gift') {
+                    placeOnBranch(hit, branchGroup);
+                }
+            }
+        }
+
+        function checkCollision(pos, radius, isFloorItem) {
+            // Check Scene Level
+            for(let child of decorationsGroup.children) {
+                if(child.userData.type === 'garland' || child.userData.type === 'string' || child.userData.type === 'tinsel' || child.userData.type === 'star') continue;
+                const otherRad = child.userData.radius || 0.3;
+                const dist = child.position.distanceTo(pos);
+                if(dist < (radius + otherRad)) return true;
+            }
+            // Check Branch Children (Rigid Items)
+            for(let branch of branches) {
+                for(let child of branch.children) {
+                    if(child.userData.isDecoration) {
+                         const worldPos = new THREE.Vector3();
+                         child.getWorldPosition(worldPos);
+                         const dist = worldPos.distanceTo(pos);
+                         if(dist < (radius + 0.3)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function placeOnBranch(hit, branchGroup) {
+            const bone = branchGroup.children.find(c => c.userData.type === 'branch_bone');
+            const length = bone.userData.length;
+            const boneRadius = bone.userData.radius;
+            const needleRadius = 0.5 * parseFloat(state.needleLenMult);
+
+            let localPoint = branchGroup.worldToLocal(hit.point.clone());
+            let xPos = localPoint.x;
+            
+            // Logic for Position Clamping
+            if(state.mode === 'bow') {
+                xPos = length; // Force to Tip
+            } else if(state.mode !== 'light') {
+                xPos = Math.max(length * 0.4, Math.min(length - 0.1, xPos));
+            } else {
+                 xPos = Math.max(0.1, Math.min(length - 0.1, xPos));
+            }
+            
+            // Logic for Height (Rest on Bone vs Fluff)
+            let surfaceY = boneRadius + (needleRadius * 0.7);
+            if (state.mode === 'candy') {
+                surfaceY = boneRadius + 0.05; // Sit tighter on the wood
+            } else if (state.mode === 'bow') {
+                surfaceY = 0; // Center on the branch tip
+            }
+            
+            const placeLocal = new THREE.Vector3(xPos, surfaceY, 0);
+            const placeWorld = branchGroup.localToWorld(placeLocal.clone()); // Temp for checks
+
+            if(placeWorld.y < 2.5) { return; }
+            if(placeWorld.y > parseFloat(state.treeHeight)) { return; }
+
+            if(state.mode !== 'light' && state.mode !== 'tinsel') {
+                if(checkCollision(placeWorld, 0.3, false)) { return; }
+            }
+
+            const dec = new THREE.Group();
+            dec.userData.radius = 0.3; 
+            dec.userData.type = state.mode; 
+            dec.userData.isDecoration = true; // Mark for cleanup
+            const color = getColor();
+
+            const isRigid = (state.mode === 'bow' || state.mode === 'tinsel');
+
+            if(state.mode === 'candy') {
+                const cane = createSmoothCandyCane();
+                dec.add(cane);
+                
+                // Random Y rotation
+                dec.rotation.y = Math.random() * Math.PI * 2; 
+            } else if(state.mode === 'bulb') {
+                const string = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 6), new THREE.MeshBasicMaterial({color: 0x888888}));
+                string.position.y = -0.3; dec.add(string);
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), materials.bulb(color));
+                bulb.position.y = -0.8; bulb.castShadow = true; dec.add(bulb);
+            } else if(state.mode === 'bow') {
+                const bow = createBow(color); dec.add(bow);
+            } else if(state.mode === 'light') {
+                const lightMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), materials.light(color));
+                dec.add(lightMesh);
+                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: color, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending }));
+                sprite.scale.set(1.5, 1.5, 1.5); dec.add(sprite);
+                dec.userData = { type: 'twinkle_light', offset: Math.random()*10 };
+            } 
+
+            // ATTACHMENT LOGIC
+            if(isRigid) {
+                // Attach as child of Branch (Rotates/Moves with branch rigidly)
+                dec.position.copy(placeLocal);
+                
+                if(state.mode === 'bow') {
+                     // Orient bow to face OUT from branch tip
+                     // Local X+ is branch direction.
+                     dec.rotation.y = Math.PI / 2;
+                }
+
+                dec.userData.attachedBranch = branchGroup;
+                branchGroup.add(dec);
+            } else {
+                // Attach to Scene (Hangs via Gravity, Position Tracked)
+                dec.position.copy(placeWorld);
+                dec.userData.attachedBranch = branchGroup;
+                dec.userData.localPos = placeLocal.clone();
+                decorationsGroup.add(dec);
+            }
+
+            if(state.mode !== 'light') modifyBranchLoad(branchGroup, 1);
+            animatePop(dec);
+        }
+
+        // --- NEW TINSEL GARLAND LOGIC ---
+        function createTinselGarlandMesh(curve, color) {
+            const length = curve.getLength();
+            const strandCount = Math.floor(length * 200); 
+            const spreadRadius = 0.25; 
+            
+            const geometry = new THREE.PlaneGeometry(0.02, 0.8, 2, 4); 
+            const posAttr = geometry.attributes.position;
+            const vertex = new THREE.Vector3();
+            
+            for(let i=0; i<posAttr.count; i++){
+                vertex.fromBufferAttribute(posAttr, i);
+                const curveAmt = Math.sin(vertex.y * 3) * 0.05; 
+                vertex.x += curveAmt;
+                posAttr.setXYZ(i, vertex.x, vertex.y, vertex.z);
+            }
+            geometry.computeVertexNormals();
+            geometry.translate(0, -0.4, 0); 
+            
+            const mesh = new THREE.InstancedMesh(geometry, materials.tinsel(color), strandCount);
+            const dummy = new THREE.Object3D();
+            const up = new THREE.Vector3(0, 1, 0);
+            const axis = new THREE.Vector3();
+
+            for(let i=0; i<strandCount; i++) {
+                const t = i / strandCount;
+                const point = curve.getPoint(t);
+                const tangent = curve.getTangent(t);
+                
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * spreadRadius;
+                
+                axis.crossVectors(up, tangent).normalize();
+                const normal = new THREE.Vector3().copy(up).cross(axis).normalize();
+                
+                const offsetX = Math.cos(angle) * r;
+                const offsetY = Math.sin(angle) * r;
+                
+                const pos = point.clone()
+                    .add(axis.clone().multiplyScalar(offsetX))
+                    .add(normal.clone().multiplyScalar(offsetY));
+
+                const outwardDir = new THREE.Vector3().subVectors(pos, point).normalize();
+                
+                dummy.position.copy(pos);
+                dummy.lookAt(pos.clone().add(outwardDir));
+                dummy.rotateX((Math.random() - 0.5) * 1.5);
+                dummy.rotateY((Math.random() - 0.5) * 1.5);
+                dummy.rotateZ((Math.random() - 0.5) * 1.5);
+                
+                const scaleY = 0.7 + Math.random() * 0.5;
+                dummy.scale.set(1, scaleY, 1);
+                
+                dummy.updateMatrix();
+                mesh.setMatrixAt(i, dummy.matrix);
+            }
+            
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            return mesh;
+        }
+
+        function createSpiralDraping(type) {
+            const height = parseFloat(state.treeHeight);
+            const turns = 7 + Math.random() * 2;
+            const pointsPerTurn = 20;
+            const phaseOffset = Math.random() * Math.PI * 2;
+            const tightness = 0.9 + Math.random() * 0.1;
+            const anchors = [];
+
+            for(let i=0; i<turns * pointsPerTurn; i++) {
+                const t = i / (turns * pointsPerTurn);
+                const y = height * (1 - t * tightness); 
+                const realY = y + 2.5;
+                if(realY < 3.0) continue; 
+                if(realY > height) continue;
+
+                const angle = (t * Math.PI * 2 * turns) + phaseOffset;
+                const outerRadius = 15; 
+                const testPos = new THREE.Vector3(Math.cos(angle)*outerRadius, realY, Math.sin(angle)*outerRadius);
+                const target = new THREE.Vector3(0, realY, 0);
+                const dir = target.sub(testPos).normalize();
+                
+                raycaster.set(testPos, dir);
+                const intersects = raycaster.intersectObjects(treeContainer.children, true);
+                
+                const hit = intersects.find(h => h.object.userData.type === 'hit_box' || h.object.userData.type === 'needles' || h.object.userData.type === 'branch_bone');
+                
+                if(hit) {
+                    let bg = hit.object.userData.parentGroup;
+                    if(bg) {
+                        const bone = bg.children.find(c => c.userData.type === 'branch_bone');
+                        const needleLen = parseFloat(state.needleLenMult) * 0.8; 
+                        const local = bg.worldToLocal(hit.point.clone());
+                        const surfaceY = bone.userData.radius + needleLen + 0.1; 
+                        local.y = surfaceY; local.z = 0;
+                        const worldAnchor = bg.localToWorld(local);
+                        worldAnchor.x += (Math.random()-0.5)*0.2;
+                        worldAnchor.z += (Math.random()-0.5)*0.2;
+                        anchors.push(worldAnchor);
+                    }
+                }
+            }
+
+            if(anchors.length < 5) return;
+            const curve = new THREE.CatmullRomCurve3(anchors);
+            
+            let mesh;
+            const color = getColor();
+
+            if(type === 'garland') {
+                const geo = new THREE.TubeGeometry(curve, anchors.length * 10, 0.15, 6, false);
+                const pos = geo.attributes.position;
+                const vec = new THREE.Vector3();
+                for(let i=0; i<pos.count; i++) {
+                    vec.fromBufferAttribute(pos, i);
+                    vec.x += (Math.random()-0.5) * 0.2;
+                    vec.y += (Math.random()-0.5) * 0.2;
+                    vec.z += (Math.random()-0.5) * 0.2;
+                    pos.setXYZ(i, vec.x, vec.y, vec.z);
+                }
+                geo.computeVertexNormals();
+                mesh = new THREE.Mesh(geo, materials.garland(color));
+            } else if(type === 'string') {
+                const geo = new THREE.TubeGeometry(curve, anchors.length * 10, 0.015, 5, false);
+                mesh = new THREE.Mesh(geo, materials.wire);
+                const lightCount = anchors.length * 4;
+                for(let i=0; i<lightCount; i++) {
+                    const t = i/lightCount;
+                    const pos = curve.getPoint(t);
+                    const group = new THREE.Group();
+                    group.position.copy(pos);
+                    const tangent = curve.getTangent(t);
+                    const normal = new THREE.Vector3(0,1,0).cross(tangent).normalize();
+                    group.position.add(normal.multiplyScalar(0.04));
+                    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), materials.stringLight(color));
+                    bulb.castShadow = false; 
+                    group.add(bulb);
+                    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: color, transparent: true, blending: THREE.AdditiveBlending }));
+                    sprite.scale.set(0.6, 0.6, 0.6);
+                    group.add(sprite);
+                    group.userData = { type: 'twinkle_light', offset: Math.random()*10 };
+                    decorationsGroup.add(group);
+                }
+            } else if (type === 'tinsel') {
+                mesh = createTinselGarlandMesh(curve, color);
+            }
+
+            if(mesh) {
+                mesh.userData.type = type;
+                mesh.castShadow = true;
+                decorationsGroup.add(mesh);
+                animatePop(mesh);
+            }
+        }
+        
+        // --- NEW GEOMETRY: Correct Pivot for "Hanging" look ---
+        function createSmoothCandyCane() {
+            // Pivot (0,0,0) is the "inside top" of the hook.
+            const curve = new THREE.CurvePath();
+            
+            // 1. Straight Leg:
+            // Starts slightly offset in X (to be beside branch)
+            // Goes Down
+            const line = new THREE.LineCurve3(
+                new THREE.Vector3(0.15, 0, 0), // Start at pivot level, but offset
+                new THREE.Vector3(0.15, -1.5, 0) // Go down
+            );
+            
+            // 2. Hook:
+            // Loops over (0,0,0)
+            const hook = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0.15, 0, 0), 
+                new THREE.Vector3(0.12, 0.25, 0), // Up and over
+                new THREE.Vector3(-0.05, 0.3, 0), // Top Apex
+                new THREE.Vector3(-0.2, 0.1, 0),
+                new THREE.Vector3(-0.15, -0.15, 0) // Tip
+            ]);
+
+            curve.add(line);
+            curve.add(hook);
+            
+            const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.09, 12, false); 
+            
+            const mesh = new THREE.Mesh(tubeGeo, materials.candy);
+            mesh.castShadow = true;
+            mesh.scale.set(0.7, 0.7, 0.7); 
+            return mesh;
+        }
+
+        function createBow(color) {
+            const group = new THREE.Group(); const mat = materials.bow(color);
+            const loopGeo = new THREE.TorusGeometry(0.3, 0.1, 6, 12); 
+            
+            // CENTERED GEOMETRY ADJUSTMENT
+            // Knot is at (0,0,0) for pivot.
+            // Loop centers moved down/back slightly to align with knot at origin
+            
+            const l1 = new THREE.Mesh(loopGeo, mat); l1.position.set(-0.25, 0, -0.1); l1.rotation.set(0, -0.5, 0);
+            const l2 = new THREE.Mesh(loopGeo, mat); l2.position.set(0.25, 0, -0.1); l2.rotation.set(0, 0.5, 0);
+            const knot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), mat); knot.position.set(0, 0, 0);
+            const tailGeo = new THREE.PlaneGeometry(0.25, 0.8);
+            const t1 = new THREE.Mesh(tailGeo, mat); t1.position.set(-0.15, -0.4, 0); t1.rotation.set(0, 0, 0.3);
+            const t2 = new THREE.Mesh(tailGeo, mat); t2.position.set(0.15, -0.4, 0); t2.rotation.set(0, 0, -0.3);
+            group.add(l1, l2, knot, t1, t2); return group;
+        }
+        function placeGift(pos, silent=false) {
+            if(pos.length() < 2.5) return false;
+            
+            const w = 2.0 + Math.random() * 1.5; 
+            const h = 1.5 + Math.random() * 1.5; 
+            const d = 2.0 + Math.random() * 1.5; 
+            const boundingRadius = Math.sqrt(w*w + d*d) / 2;
+
+            if(checkCollision(pos, boundingRadius + 0.5, true)) {
+                return false;
+            }
+            
+            const group = new THREE.Group(); group.position.copy(pos); 
+            const color = getColor(); 
+            
+            const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), materials.giftBox(color)); 
+            box.position.y = h/2; 
+            box.castShadow = true; 
+            group.add(box);
+            
+            const r1 = new THREE.Mesh(new THREE.BoxGeometry(w + 0.05, h + 0.05, 0.2), materials.giftRibbon); 
+            r1.position.y = h/2; 
+            group.add(r1);
+            
+            const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, h + 0.05, d + 0.05), materials.giftRibbon); 
+            r2.position.y = h/2; 
+            group.add(r2);
+            
+            group.rotation.y = Math.random() * Math.PI; 
+            group.userData.radius = boundingRadius; 
+            
+            group.userData.type = 'gift';
+
+            decorationsGroup.add(group); animatePop(group);
+            return true;
+        }
+        function createSnow() {
+            const count = 3000; const pos = new Float32Array(count*3); const vel = [];
+            for(let i=0; i<count; i++){ pos[i*3] = Math.random()*100 - 50; pos[i*3+1] = Math.random()*60; pos[i*3+2] = Math.random()*100 - 50; vel.push({x: (Math.random()-0.5)*0.05, y: -0.05 - Math.random()*0.1, z: (Math.random()-0.5)*0.05}); }
+            const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const mat = new THREE.PointsMaterial({color: 0xffffff, size: 0.25, transparent: true, opacity: 0.8});
+            snowSystem = new THREE.Points(geo, mat); snowSystem.userData = { vel: vel }; scene.add(snowSystem);
+        }
+        function updateSnow() {
+            if(!state.snowing) { snowSystem.visible = false; return; } snowSystem.visible = true;
+            const pos = snowSystem.geometry.attributes.position.array; const vel = snowSystem.userData.vel;
+            for(let i=0; i<vel.length; i++) { pos[i*3] += vel[i].x; pos[i*3+1] += vel[i].y; pos[i*3+2] += vel[i].z; if(pos[i*3+1] < 0) { pos[i*3+1] = 60; pos[i*3] = Math.random()*100 - 50; pos[i*3+2] = Math.random()*100 - 50; } }
+            snowSystem.geometry.attributes.position.needsUpdate = true;
+        }
+        
+        // --- NEW PHYSICS UPDATE LOOP ---
+        function updateDecorationsPhysics() {
+            decorationsGroup.children.forEach(d => {
+                if(d.userData.attachedBranch && d.userData.localPos) {
+                    // Recalculate World Position based on Branch's current transform
+                    // This allows items to move with the branch, but keep their own gravity-aligned rotation
+                    const newPos = d.userData.attachedBranch.localToWorld(d.userData.localPos.clone());
+                    d.position.copy(newPos);
+                }
+            });
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate); 
+            controls.update(); 
+            updateSnow();
+            updateDecorationsPhysics(); // Sync dangling items
+            
+            if(state.twinkle) { const t = Date.now() * 0.005; decorationsGroup.children.forEach(c => { if(c.userData.type === 'twinkle_light') c.children[1].material.opacity = 0.4 + Math.sin(t + c.userData.offset)*0.4; }); }
+            renderer.render(scene, camera);
+        }
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+
+        function modifyBranchLoad(branchGroup, delta) { 
+            if(!branchGroup.userData) return; 
+            branchGroup.userData.currentLoad += delta; 
+            const baseRot = branchGroup.userData.initialRotationZ; 
+            const droop = Math.min(0.5, branchGroup.userData.currentLoad * 0.05); 
+            branchGroup.rotation.z = baseRot + droop; 
+            // Note: Rigid children (bows) rotate automatically.
+            // Dangling children (canes) are updated in animate() loop.
+        }
+        function animatePop(obj) { obj.scale.set(0,0,0); let s = 0; function step() { s += 0.1; const scale = 1 + Math.sin(s * Math.PI) * 0.2; if(s >= 1) { obj.scale.set(1,1,1); return; } obj.scale.set(s,s,s); requestAnimationFrame(step); } step(); }
+        
+        function clearDecorations() { 
+            branches.forEach(b => {
+                b.rotation.z = b.userData.initialRotationZ;
+                b.userData.currentLoad = 0;
+                
+                // Remove rigid children (Bows)
+                for(let i = b.children.length - 1; i >= 0; i--) {
+                    const child = b.children[i];
+                    if(child.userData.isDecoration) {
+                        b.remove(child);
+                    }
+                }
+            }); 
+            while(decorationsGroup.children.length > 0) decorationsGroup.remove(decorationsGroup.children[0]); 
+        }
+        
+        // RE-ADDED MISSING FUNCTION TO FIX REFERENCE ERROR
+        function updateTreeProp(prop, val) { 
+            state[prop] = val; 
+            const map = {'treeHeight':'val-height', 'levels':'val-levels', 'branchRadiusMult':'val-radius', 'needleLenMult':'val-needle'}; 
+            if(map[prop]) {
+                const el = document.getElementById(map[prop]);
+                if(el) el.innerText = val;
+            }
+            generateTree();
+        }
+
+        // --- FIXED MISSING ADDSTAR FUNCTION ---
+        function addStar() {
+            const old = decorationsGroup.children.find(c => c.userData.type === 'star'); 
+            if(old) decorationsGroup.remove(old);
+            
+            const starGroup = new THREE.Group(); 
+            const geo = new THREE.IcosahedronGeometry(1.5); 
+            const mesh = new THREE.Mesh(geo, materials.star); 
+            starGroup.add(mesh);
+            
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xffd700, transparent: true, blending: THREE.AdditiveBlending }));
+            sprite.scale.set(10, 10, 10); 
+            starGroup.add(sprite);
+            
+            starGroup.position.set(0, parseFloat(state.treeHeight) + 2.5, 0); 
+            starGroup.userData = { type: 'star', radius: 1.5 };
+            decorationsGroup.add(starGroup); 
+            animatePop(starGroup);
+        }
+
+        function autoDecorate(preset) {
+            isAutoDecorating = true;
+            if(preset === 'lights' || preset === 'all') {
+                createSpiralDraping('string');
+                for(let b of branches) {
+                    if(Math.random() > 0.3) {
+                        state.mode = 'light';
+                        const bone = b.children.find(c => c.userData.type === 'branch_bone');
+                        if(b.position.y < 3.0) continue;
+                        if(b.position.y > parseFloat(state.treeHeight)) continue;
+                        const hit = { point: b.localToWorld(new THREE.Vector3(bone.userData.length * Math.random(), 0, 0)) };
+                        placeOnBranch(hit, b);
+                    }
+                }
+            }
+
+            if(preset === 'all') {
+                addStar();
+                createSpiralDraping('garland');
+                for(let b of branches) {
+                    if(Math.random() > 0.5) continue; 
+                    if(b.position.y < 3.0) continue;
+                    if(b.position.y > parseFloat(state.treeHeight)) continue;
+
+                    const r = Math.random();
+                    const bone = b.children.find(c => c.userData.type === 'branch_bone');
+                    const len = bone.userData.length;
+                    const dist = len * (0.5 + Math.random() * 0.4);
+                    
+                    if(r < 0.2) { state.mode = 'bow'; const hit = { point: b.localToWorld(new THREE.Vector3(len, 0, 0)) }; placeOnBranch(hit, b); }
+                    else if (r < 0.4) { state.mode = 'bulb'; const hit = { point: b.localToWorld(new THREE.Vector3(dist, 0, 0)) }; placeOnBranch(hit, b); }
+                    else if (r < 0.6) { state.mode = 'tinsel'; const hit = { point: b.localToWorld(new THREE.Vector3(dist, 0, 0)) }; placeOnBranch(hit, b); }
+                    else { state.mode = 'candy'; const hit = { point: b.localToWorld(new THREE.Vector3(dist, 0, 0)) }; placeOnBranch(hit, b); }
+                }
+                
+                let attempts = 0;
+                let giftsPlaced = 0;
+                while(giftsPlaced < 8 && attempts < 50) {
+                    attempts++;
+                    const angle = Math.random() * Math.PI * 2; const rad = 5 + Math.random() * 8;
+                    const pos = new THREE.Vector3(Math.cos(angle)*rad, 0, Math.sin(angle)*rad);
+                    if(placeGift(pos, true)) giftsPlaced++;
+                }
+            }
+            isAutoDecorating = false;
+        }
+
+        // --- ADDED MISSING FUNCTION ---
+        function takeScreenshot() {
+            try {
+                const data = renderer.domElement.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.download = "tree.png";
+                link.href = data;
+                link.click();
+            } catch(e){
+                console.error("Screenshot failed:", e);
+            }
+        }
+
+        // --- RESTORED MISSING UI FUNCTIONS ---
+        function switchTab(tabId) { 
+            document.querySelectorAll('.nav-btn').forEach(t => t.classList.remove('active')); 
+            document.querySelectorAll('.panel-view').forEach(p => p.classList.remove('active')); 
+            document.querySelector(`.nav-btn[onclick="switchTab('${tabId}')"]`).classList.add('active'); 
+            document.getElementById(`panel-${tabId}`).classList.add('active'); 
+        }
+
+        function toggleUI() { 
+            const container = document.getElementById('ui-container'); 
+            container.classList.toggle('collapsed'); 
+        }
+
+        function updateColorInputVisual(el, color) {
+            const wrapper = el.parentElement;
+            if(wrapper && wrapper.classList.contains('color-circle')) {
+                wrapper.style.backgroundColor = color;
+            }
+        }
+
+        function setColorMode(mode) {
+            state.colorMode = mode;
+            document.getElementById('mode-mono').className = `mode-option ${mode==='mono'?'active':''}`;
+            document.getElementById('mode-palette').className = `mode-option ${mode==='palette'?'active':''}`;
+            document.getElementById('mode-random').className = `mode-option ${mode==='random'?'active':''}`;
+            
+            const container = document.getElementById('palette-inputs');
+            container.innerHTML = '';
+            
+            if (mode === 'mono') {
+                container.innerHTML = `
+                    <div class="color-circle" style="background-color: ${state.colors[0]}">
+                        <input type="color" value="${state.colors[0]}" 
+                        oninput="state.colors[0]=this.value; updateColorInputVisual(this, this.value)">
+                    </div>`;
+            } else if (mode === 'palette') {
+                state.colors.forEach((c, i) => {
+                    container.innerHTML += `
+                        <div class="color-circle" style="background-color: ${c}">
+                            <input type="color" value="${c}" 
+                            oninput="state.colors[${i}]=this.value; updateColorInputVisual(this, this.value)">
+                        </div>`;
+                });
+            } else if (mode === 'random') {
+                container.innerHTML = `<div class="rainbow-bar">RAINBOW MODE ACTIVE</div>`;
+            }
+        }
+        
+        function getColor() {
+            if (state.colorMode === 'mono') {
+                return new THREE.Color(state.colors[0]);
+            } else if (state.colorMode === 'palette') {
+                const c = state.colors[Math.floor(Math.random() * state.colors.length)];
+                return new THREE.Color(c);
+            } else {
+                return new THREE.Color().setHSL(Math.random(), 0.8, 0.5);
+            }
+        }
+        
+        function applyStyleToAll() {
+            // Apply to scene level
+            decorationsGroup.traverse((obj) => {
+                if (obj.userData.type === 'star' || obj.userData.type === 'tinsel' || obj.userData.type === 'string') return;
+                const newColor = getColor();
+                if (obj.children) {
+                    obj.children.forEach(c => {
+                        if (c.material && c.material.color) c.material.color.copy(newColor);
+                        if (c.isSprite) c.material.color.copy(newColor);
+                    });
+                }
+                if(obj.userData.type === 'gift') {
+                    if(obj.children[0] && obj.children[0].material) obj.children[0].material.color.copy(newColor);
+                }
+            });
+            // Apply to rigid children (Bows)
+            branches.forEach(b => {
+                b.traverse(obj => {
+                    if(obj.userData.isDecoration) {
+                         const newColor = getColor();
+                         obj.children.forEach(c => {
+                            if (c.material && c.material.color) c.material.color.copy(newColor);
+                         });
+                    }
+                })
+            })
+        }
+
+        window.setMode = (m) => { 
+            state.mode = m; 
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); 
+            if(document.getElementById('btn-mode-'+m)) document.getElementById('btn-mode-'+m).classList.add('active'); 
+        };
+        window.regenerateTree = generateTree; 
+        window.clearDecorations = clearDecorations; 
+        window.toggleTwinkle = () => state.twinkle = !state.twinkle; 
+        window.toggleSnow = () => state.snowing = !state.snowing; 
+        window.updateTreeProp = updateTreeProp; 
+        window.addStar = addStar; 
+        window.autoDecorate = autoDecorate; 
+        window.takeScreenshot = takeScreenshot; 
+        window.switchTab = switchTab; 
+        window.toggleUI = toggleUI;
+        window.setColorMode = setColorMode;
+        window.applyStyleToAll = applyStyleToAll;
+        window.updateColorInputVisual = updateColorInputVisual;
+        
+        setColorMode('mono');
+        
+        init();
+    </script>
+</body>
+</html>
